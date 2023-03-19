@@ -9,11 +9,11 @@ project (miniupnpc
 set (MINIUPNPC_API_VERSION 17)
 
 option (UPNPC_BUILD_STATIC "Build static library" TRUE)
-option (UPNPC_BUILD_SHARED "Build shared library" TRUE)
-option (UPNPC_BUILD_TESTS "Build test executables" TRUE)
-option (UPNPC_BUILD_SAMPLE "Build sample executables" TRUE)
+option (UPNPC_BUILD_SHARED "Build shared library" FALSE)
+option (UPNPC_BUILD_TESTS "Build test executables" FALSE)
+option (UPNPC_BUILD_SAMPLE "Build sample executables" FALSE)
 option (NO_GETADDRINFO "Define NO_GETADDRINFO" FALSE)
-option (UPNPC_NO_INSTALL "Disable installation" FALSE)
+option (UPNPC_NO_INSTALL "Disable installation" TRUE)
 
 if (NOT UPNPC_BUILD_STATIC AND NOT UPNPC_BUILD_SHARED)
     message (FATAL "Both shared and static libraries are disabled!")
@@ -53,6 +53,14 @@ endif ()
 # Suppress noise warnings
 if (MSVC)
   target_compile_definitions(miniupnpc-private INTERFACE _CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (CMAKE_C_COMPILER_ID MATCHES MSVC)
+	set(CMAKE_C_FLAGS_DEBUG "/MP /GS /guard:cf /Od /Ob0 /Zi /MTd /fsanitize=address")
+	set(CMAKE_C_FLAGS_RELEASE "/MP /GS /guard:cf /O1 /Oi /Ob2 /Os /DNDEBUG /GL /MT")
+	set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MP /GS /guard:cf /Ob1 /Os /Zi /MT")
+else()
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os")
 endif()
 
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/miniupnpcstrings.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/miniupnpcstrings.h)
