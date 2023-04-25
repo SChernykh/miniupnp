@@ -1,7 +1,7 @@
 /* $Id: upnppermissions.c,v 1.20 2020/10/30 21:37:35 nanard Exp $ */
 /* MiniUPnP project
  * http://miniupnp.free.fr/ or https://miniupnp.tuxfamily.org/
- * (c) 2006-2022 Thomas Bernard
+ * (c) 2006-2023 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 
@@ -152,7 +152,22 @@ get_next_token(const char * s, char ** token, int raw)
 			memmove(*token + i + 1, *token + i + sequence_len,
 			        token_len - i - sequence_len);
 		}
-		*token = realloc(*token, i);
+		if (i == 0)
+		{
+			/* behavior of realloc(p, 0) is implementation-defined, so better set it to NULL.
+			 * https://github.com/miniupnp/miniupnp/issues/652#issuecomment-1518922139 */
+			free(*token);
+			*token = NULL;
+		}
+		else
+		{
+			char * tmp = realloc(*token, i);
+			if (tmp != NULL)
+				*token = tmp;
+			else
+				syslog(LOG_ERR, "%s: failed to reallocate to %u bytes",
+				       "get_next_token()", i);
+		}
 	}
 
 	/* return the beginning of the next token */
@@ -175,6 +190,9 @@ read_permission_line(struct upnpperm * perm,
 	char * q;
 	int n_bits;
 	int i;
+
+	/* zero memory : see https://github.com/miniupnp/miniupnp/issues/652 */
+	memset(perm, 0, sizeof(struct upnpperm));
 
 	/* first token: (allow|deny) */
 	while(isspace(*p))
