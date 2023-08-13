@@ -1,4 +1,4 @@
-/* $Id: upnpc.c,v 1.131 2022/02/19 23:22:54 nanard Exp $ */
+/* $Id: upnpc.c,v 1.135 2023/06/29 09:55:14 nanard Exp $ */
 /* Project : miniupnp
  * Author : Thomas Bernard
  * Copyright (c) 2005-2023 Thomas Bernard
@@ -188,7 +188,7 @@ static void NewListRedirections(struct UPNPUrls * urls,
 	memset(&pdata, 0, sizeof(struct PortMappingParserData));
 	r = UPNP_GetListOfPortMappings(urls->controlURL,
                                    data->first.servicetype,
-	                               "0",
+	                               "1",
 	                               "65535",
 	                               "TCP",
 	                               "1000",
@@ -214,7 +214,7 @@ static void NewListRedirections(struct UPNPUrls * urls,
 	}
 	r = UPNP_GetListOfPortMappings(urls->controlURL,
                                    data->first.servicetype,
-	                               "0",
+	                               "1",
 	                               "65535",
 	                               "UDP",
 	                               "1000",
@@ -465,11 +465,20 @@ static void GetPinholeAndUpdate(struct UPNPUrls * urls, struct IGDdatas * data,
 		fprintf(stderr, "Wrong arguments\n");
 		return;
 	}
+	/* CheckPinholeWorking is an Optional Action, error 602 should be
+	 * returned if it is not implemented */
 	r = UPNP_CheckPinholeWorking(urls->controlURL_6FC, data->IPv6FC.servicetype, uniqueID, &isWorking);
-	printf("CheckPinholeWorking: Pinhole ID = %s / IsWorking = %s\n", uniqueID, (isWorking)? "Yes":"No");
-	if(r!=UPNPCOMMAND_SUCCESS)
-		printf("CheckPinholeWorking() failed with code %d (%s)\n", r, strupnperror(r));
-	if(isWorking || r==709)
+	if(r==UPNPCOMMAND_SUCCESS)
+		printf("CheckPinholeWorking: Pinhole ID = %s / IsWorking = %s\n", uniqueID, (isWorking)? "Yes":"No");
+	else
+		printf("CheckPinholeWorking(%s) failed with code %d (%s)\n", uniqueID, r, strupnperror(r));
+	/* 702 FirewallDisabled Firewall is disabled and this action is disabled
+	 * 703 InboundPinholeNotAllowed Creation of inbound pinholes by UPnP CPs
+	 *                              are not allowed and this action is disabled
+	 * 704 NoSuchEntry There is no pinhole with the specified UniqueID.
+	 * 709 NoTrafficReceived No traffic corresponding to this pinhole has
+	 *                       been received by the gateway. */
+	if(isWorking || (r!=702 && r!=703 && r!=704))
 	{
 		r = UPNP_UpdatePinhole(urls->controlURL_6FC, data->IPv6FC.servicetype, uniqueID, lease_time);
 		printf("UpdatePinhole: Pinhole ID = %s with Lease Time: %s\n", uniqueID, lease_time);
@@ -647,14 +656,14 @@ int main(int argc, char ** argv)
 	   || (command == 'U' && commandargc<2)
 	   || (command == 'D' && commandargc<1))
 	{
-		fprintf(stderr, "Usage :\t%s [options] -a ip port external_port protocol [duration] [remote host]\n\t\tAdd port redirection\n", argv[0]);
+		fprintf(stderr, "Usage :\t%s [options] -a ip port external_port protocol [duration] [remote host]\n\t\tAdd port mapping\n", argv[0]);
+		fprintf(stderr, "       \t%s [options] -r port1 [external_port1] protocol1 [port2 [external_port2] protocol2] [...]\n\t\tAdd multiple port mappings to the current host\n", argv[0]);
 		fprintf(stderr, "       \t%s [options] -d external_port protocol [remote host]\n\t\tDelete port redirection\n", argv[0]);
 		fprintf(stderr, "       \t%s [options] -s\n\t\tGet Connection status\n", argv[0]);
 		fprintf(stderr, "       \t%s [options] -l\n\t\tList redirections\n", argv[0]);
 		fprintf(stderr, "       \t%s [options] -L\n\t\tList redirections (using GetListOfPortMappings (for IGD:2 only)\n", argv[0]);
-		fprintf(stderr, "       \t%s [options] -n ip port external_port protocol [duration] [remote host]\n\t\tAdd (any) port redirection allowing IGD to use alternative external_port (for IGD:2 only)\n", argv[0]);
-		fprintf(stderr, "       \t%s [options] -N external_port_start external_port_end protocol [manage]\n\t\tDelete range of port redirections (for IGD:2 only)\n", argv[0]);
-		fprintf(stderr, "       \t%s [options] -r port1 [external_port1] protocol1 [port2 [external_port2] protocol2] [...]\n\t\tAdd all redirections to the current host\n", argv[0]);
+		fprintf(stderr, "       \t%s [options] -n ip port external_port protocol [duration] [remote host]\n\t\tAdd (any) port mapping allowing IGD to use alternative external_port (for IGD:2 only)\n", argv[0]);
+		fprintf(stderr, "       \t%s [options] -N external_port_start external_port_end protocol [manage]\n\t\tDelete range of port mappings (for IGD:2 only)\n", argv[0]);
 		fprintf(stderr, "       \t%s [options] -A remote_ip remote_port internal_ip internal_port protocol lease_time\n\t\tAdd Pinhole (for IGD:2 only)\n", argv[0]);
 		fprintf(stderr, "       \t%s [options] -U uniqueID new_lease_time\n\t\tUpdate Pinhole (for IGD:2 only)\n", argv[0]);
 		fprintf(stderr, "       \t%s [options] -C uniqueID\n\t\tCheck if Pinhole is Working (for IGD:2 only)\n", argv[0]);
