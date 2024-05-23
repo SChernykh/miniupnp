@@ -567,6 +567,7 @@ static void usage(FILE * out, const char * argv0) {
 	fprintf(out, "  %s [options] -a ip port external_port protocol [duration] [remote host]\n    Add port mapping\n", argv0);
 	fprintf(out, "  %s [options] -r port1 [external_port1] protocol1 [port2 [external_port2] protocol2] [...]\n    Add multiple port mappings to the current host\n", argv0);
 	fprintf(out, "  %s [options] -d external_port protocol [remote host]\n    Delete port redirection\n", argv0);
+	fprintf(out, "  %s [options] -f external_port1 protocol1 [external_port2 protocol2] [...]\n    Delete multiple port redirections\n", argv0);
 	fprintf(out, "  %s [options] -s\n    Get Connection status\n", argv0);
 	fprintf(out, "  %s [options] -l\n    List redirections\n", argv0);
 	fprintf(out, "  %s [options] -L\n    List redirections (using GetListOfPortMappings (for IGD:2 only)\n", argv0);
@@ -603,6 +604,7 @@ int main(int argc, char ** argv)
 	int commandargc = 0;
 	struct UPNPDev * devlist = 0;
 	char lanaddr[64] = "unset";	/* my ip address on the LAN */
+	char wanaddr[64] = "unsed";	/* up address of the IGD on the WAN */
 	int i;
 	const char * rootdescurl = 0;
 	const char * multicastif = 0;
@@ -726,17 +728,20 @@ int main(int argc, char ** argv)
 		}
 		i = 1;
 		if( (rootdescurl && UPNP_GetIGDFromUrl(rootdescurl, &urls, &data, lanaddr, sizeof(lanaddr)))
-		  || (i = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr))))
+		  || (i = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr), wanaddr, sizeof(wanaddr))))
 		{
 			switch(i) {
 			case 1:
 				printf("Found valid IGD : %s\n", urls.controlURL);
 				break;
 			case 2:
+				printf("Found an IGD with a reserved IP address (%s) : %s\n", wanaddr, urls.controlURL);
+				break;
+			case 3:
 				printf("Found a (not connected?) IGD : %s\n", urls.controlURL);
 				if (ignore) printf("Trying to continue anyway\n");
 				break;
-			case 3:
+			case 4:
 				printf("UPnP device found. Is it an IGD ? : %s\n", urls.controlURL);
 				if (ignore) printf("Trying to continue anyway\n");
 				break;
@@ -744,7 +749,7 @@ int main(int argc, char ** argv)
 				printf("Found device (igd ?) : %s\n", urls.controlURL);
 				if (ignore) printf("Trying to continue anyway\n");
 			}
-			if(i==1 || ignore) {
+			if(i==1 || i==2 || ignore) {
 
 			printf("Local LAN ip address : %s\n", lanaddr);
 			#if 0
@@ -830,6 +835,29 @@ int main(int argc, char ** argv)
 								   commandargv[i], commandargv[i+1], "0", NULL,
 								   description, 0) < 0)
 							retcode = 2;
+						i+=2;	/* 2 parameters parsed */
+					}
+				}
+				break;
+			case 'f':
+				i = 0;
+				while(i<commandargc)
+				{
+					if(!is_int(commandargv[i])) {
+						/* 1st parameter not an integer : error */
+						fprintf(stderr, "command -f : %s is not an port number\n", commandargv[i]);
+						retcode = 1;
+						break;
+					} else if(i+1 == commandargc){
+						/* too few arguments */
+						fprintf(stderr, "command -f : too few arguments\n");
+						retcode = 2;
+						break;
+					} else {
+						/* <port> <protocol> */
+						if (RemoveRedirect(&urls, &data,
+								commandargv[i], commandargv[i+1], NULL) < 0)
+							retcode = 3;
 						i+=2;	/* 2 parameters parsed */
 					}
 				}

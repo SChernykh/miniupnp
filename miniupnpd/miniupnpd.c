@@ -899,7 +899,7 @@ struct runtime_vars {
 	int notify_interval;	/* seconds between SSDP announces */
 	/* unused rules cleaning related variables : */
 	int clean_ruleset_threshold;	/* threshold for removing unused rules */
-	int clean_ruleset_interval;		/* (minimum) interval between checks */
+	int clean_ruleset_interval;		/* (minimum) interval between checks. 0=disabled */
 };
 
 /* parselanaddr()
@@ -1352,6 +1352,9 @@ init(int argc, char * * argv, struct runtime_vars * v)
 				break;
 			case UPNPNATPOSTCHAIN:
 				set_rdr_name(RDR_NAT_POSTROUTING_CHAIN_NAME, ary_options[i].value);
+				break;
+			case UPNPNFFAMILYSPLIT:
+				set_rdr_name(RDR_FAMILY_SPLIT, ary_options[i].value);
 				break;
 #endif    /* USE_NETFILTER */
 			case UPNPNOTIFY_INTERVAL:
@@ -2417,6 +2420,28 @@ main(int argc, char * * argv)
 		                "messages. EXITING");
 			return 1;
 		}
+
+#if defined(UPNP_STRICT) && defined(IGD_V2)
+		/* WANIPConnection:2 Service p9 :
+		 * Upon startup, UPnP IGD DCP MUST broadcast an ssdp:byebye before
+		 * sending the initial ssdp:alive onto the local network. Sending an
+		 * ssdp:byebye as part of the normal start up process for a UPnP
+		 * device ensures that UPnP control points with information about the
+		 * previous device instance will safely discard state information
+		 * about the previous device instance before communicating with the
+		 * new device instance. */
+		if (GETFLAG(ENABLEUPNPMASK))
+		{
+#ifndef ENABLE_IPV6
+			if(SendSSDPGoodbye(snotify, addr_count) < 0)
+#else
+			if(SendSSDPGoodbye(snotify, addr_count * 2) < 0)
+#endif
+			{
+				syslog(LOG_WARNING, "Failed to broadcast good-bye notifications");
+			}
+		}
+#endif /* UPNP_STRICT */
 
 #ifdef USE_IFACEWATCHER
 		/* open socket for kernel notifications about new network interfaces */
