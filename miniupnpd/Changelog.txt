@@ -1,4 +1,13 @@
-$Id: Changelog.txt,v 1.521 2024/10/06 21:10:48 nanard Exp $
+$Id: Changelog.txt,v 1.523 2025/01/10 22:10:49 nanard Exp $
+
+2025/01/10:
+  NFTables: fix delete_redirect_and_filter_rules() (remove filter rule)
+
+2025/01/09:
+  Fix get_redirect_rule_by_index() for OpenBSD >= 7.4
+
+2025/01/05:
+  Fix get_src_for_route_to() for OpenBSD >= 6.6
 
 2024/10/05:
   Rework the buildsystem + systemd integration
