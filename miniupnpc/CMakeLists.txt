@@ -64,7 +64,7 @@ endif()
 
 if (CMAKE_C_COMPILER_ID MATCHES MSVC)
 	set(CMAKE_C_FLAGS_DEBUG "/MP /GS /guard:cf /Od /Ob0 /Zi /MTd /fsanitize=address")
-	set(CMAKE_C_FLAGS_RELEASE "/MP /GS /guard:cf /O1 /Oi /Ob2 /Os /DNDEBUG /GL /MT")
+	set(CMAKE_C_FLAGS_RELEASE "/W0 /O2 /Ob2 /Oi /Ot /Oy /MP /MT /GL /GS /guard:cf")
 	set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MP /GS /guard:cf /Ob1 /Os /Zi /MT")
 else()
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os")
